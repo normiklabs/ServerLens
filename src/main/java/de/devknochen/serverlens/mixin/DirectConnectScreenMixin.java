@@ -558,7 +558,7 @@ public abstract class DirectConnectScreenMixin extends Screen {
 
     @Unique
     private static Identifier serverlens$texture(String name) {
-        return new Identifier(SERVERLENS$MOD_ID, SERVERLENS$SERVER_LIST_TEXTURE_PATH + name + ".png");
+        return Identifier.of(SERVERLENS$MOD_ID, SERVERLENS$SERVER_LIST_TEXTURE_PATH + name + ".png");
     }
 
     @Unique
