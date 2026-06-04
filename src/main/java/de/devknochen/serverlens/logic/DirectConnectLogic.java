@@ -23,9 +23,20 @@ import net.minecraft.server.network.EventLoopGroupHolder;
 
 import java.net.UnknownHostException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.LockSupport;
 
-public class DirectConnectLogic {
+public final class DirectConnectLogic {
 
+    private static final long PING_TICK_SLEEP_MS = 50L;
+    private static final long PING_TICK_PAUSE_NANOS = TimeUnit.MILLISECONDS.toNanos(PING_TICK_SLEEP_MS);
+    private static final long UNKNOWN_PING = -1L;
+    private static final Runnable NO_OP = DirectConnectLogic::noop;
+
+    private DirectConnectLogic() {
+    }
+
+    @FunctionalInterface
     public interface PingCallback {
         void onFinished(ServerData serverInfo);
     }
@@ -35,39 +46,47 @@ public class DirectConnectLogic {
         ServerStatusPinger pinger = new ServerStatusPinger();
         AtomicBoolean finished = new AtomicBoolean(false);
 
-        serverInfo.ping = -1L;
+        serverInfo.ping = UNKNOWN_PING;
         serverInfo.setState(ServerData.State.PINGING);
 
         try {
-            pinger.pingServer(serverInfo, () -> {
-            }, () -> {
-                if (finished.compareAndSet(false, true)) {
-                    callback.onFinished(serverInfo);
-                }
-            }, EventLoopGroupHolder.remote(true));
+            pinger.pingServer(serverInfo, NO_OP, () -> finish(callback, serverInfo, finished), EventLoopGroupHolder.remote(true));
 
             while (!finished.get()) {
                 pinger.tick();
-                Thread.sleep(50L);
+                LockSupport.parkNanos(PING_TICK_PAUSE_NANOS);
+                if (Thread.interrupted()) {
+                    throw new InterruptedException();
+                }
             }
-        } catch (UnknownHostException e) {
+        } catch (UnknownHostException ignored) {
             serverInfo.motd = Component.literal("Unknown host");
             serverInfo.status = Component.empty();
             serverInfo.setState(ServerData.State.UNREACHABLE);
-            callback.onFinished(serverInfo);
-        } catch (InterruptedException e) {
+            finish(callback, serverInfo, finished);
+        } catch (InterruptedException ignored) {
             Thread.currentThread().interrupt();
             serverInfo.motd = Component.literal("Ping cancelled");
             serverInfo.status = Component.empty();
             serverInfo.setState(ServerData.State.UNREACHABLE);
-            callback.onFinished(serverInfo);
-        } catch (Exception e) {
+            finish(callback, serverInfo, finished);
+        } catch (RuntimeException ignored) {
             serverInfo.motd = Component.literal("Cannot connect");
             serverInfo.status = Component.empty();
             serverInfo.setState(ServerData.State.UNREACHABLE);
-            callback.onFinished(serverInfo);
+            finish(callback, serverInfo, finished);
         } finally {
             pinger.removeAll();
         }
+    }
+
+    private static void finish(PingCallback callback, ServerData serverInfo, AtomicBoolean finished) {
+        if (finished.compareAndSet(false, true)) {
+            callback.onFinished(serverInfo);
+        }
+    }
+
+    @SuppressWarnings("EmptyMethod")
+    private static void noop() {
     }
 }
