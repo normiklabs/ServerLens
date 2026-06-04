@@ -260,7 +260,8 @@ public abstract class DirectConnectScreenMixin extends Screen {
             serverlens$clearServerIcon();
 
             NativeImageBackedTexture texture = new NativeImageBackedTexture(NativeImage.read(faviconBytes));
-            serverlens$serverIcon = client.getTextureManager().registerDynamicTexture(SERVERLENS$DIRECT_CONNECT_ICON_ID, texture);
+            serverlens$serverIcon = Identifier.of(SERVERLENS$MOD_ID, SERVERLENS$DIRECT_CONNECT_ICON_ID);
+            client.getTextureManager().registerTexture(serverlens$serverIcon, texture);
         } catch (IOException | RuntimeException e) {
             serverlens$clearServerIcon();
             if (Main.isDebugMode()) {
