@@ -19,8 +19,8 @@
     "serverlens.mixins.json"
   ],
   "depends": {
-    "fabricloader": ">=0.15.10",
-    "minecraft": ">=1.21.6 <=1.21.10",
+    "fabricloader": ">=0.19.3",
+    "minecraft": "1.21.11",
     "java": ">=21",
     "fabric-api": "*"
   },

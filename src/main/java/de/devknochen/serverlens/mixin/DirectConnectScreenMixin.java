@@ -29,6 +29,7 @@ import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.texture.NativeImage;
 import net.minecraft.client.texture.NativeImageBackedTexture;
+import net.minecraft.network.NetworkingBackend;
 import net.minecraft.server.ServerMetadata;
 import net.minecraft.text.OrderedText;
 import net.minecraft.text.Text;
@@ -397,16 +398,21 @@ public abstract class DirectConnectScreenMixin extends Screen {
         serverlens$cancelPings();
 
         ServerInfo server = new ServerInfo(address, address, ServerInfo.ServerType.OTHER);
+        server.setStatus(ServerInfo.Status.PINGING);
         serverlens$currentServer = server;
         serverlens$activePingStartedAt = System.currentTimeMillis();
         serverlens$serverDataAt = 0L;
 
         SERVERLENS$PING_EXECUTOR.execute(() -> {
             try {
+                MinecraftClient client = MinecraftClient.getInstance();
                 serverlens$pinger.add(server, () -> {
                 }, () -> {
-                });
-            } catch (RuntimeException | java.net.UnknownHostException e) {
+                    server.setStatus(server.protocolVersion == SharedConstants.getProtocolVersion()
+                            ? ServerInfo.Status.SUCCESSFUL
+                            : ServerInfo.Status.INCOMPATIBLE);
+                }, NetworkingBackend.remote(client.options.shouldUseNativeTransport()));
+            } catch (Exception e) {
                 MinecraftClient.getInstance().execute(() -> {
                     if (server == serverlens$currentServer && address.equals(serverlens$lastAddress)) {
                         serverlens$markUnreachable();
