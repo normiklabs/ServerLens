@@ -20,22 +20,31 @@ import de.devknochen.serverlens.logic.DirectConnectLogic;
 import net.fabricmc.api.ClientModInitializer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.network.chat.Component;
+import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.network.protocol.status.ServerStatus;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class Main implements ClientModInitializer {
+public final class Main implements ClientModInitializer {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
+    private static final long PING_DEBOUNCE_MS = 500L;
+    private static final String PINGER_THREAD_NAME = "ServerLens-Pinger";
+    private static final String PLAYER_COUNT_SEPARATOR = "/";
+    private static final boolean DEBUG_MODE = Boolean.getBoolean("serverlens.debug");
+    private static final long MIN_KNOWN_PING = 0L;
     private static String lastAddress = "";
-    private static long lastPingTime = 0;
-    private static final long PING_DEBOUNCE_MS = 500;
-    public static boolean debugingMode = false;
+    private static long lastPingTime;
 
     @Override
     public void onInitializeClient() {
-        System.out.println("ServerLens initialized!");
+        LOGGER.info("ServerLens initialized");
     }
+
     public static void onAddressBarUpdate(String address) {
-        if (address == null || address.isBlank()) return;
+        if (address == null || address.isBlank()) {
+            return;
+        }
 
         long now = System.currentTimeMillis();
         if (address.equals(lastAddress) && now - lastPingTime < PING_DEBOUNCE_MS) {
@@ -45,41 +54,58 @@ public class Main implements ClientModInitializer {
         lastAddress = address;
         lastPingTime = now;
 
-        new Thread(() -> {
-            DirectConnectLogic.pingServer(address, serverInfo -> {
-                if (serverInfo != null) {
-                    ServerStatus.Players players = serverInfo.players;
-                    String playerCount = players != null ? players.online() + "/" + players.max() : "";
+        Thread.ofPlatform()
+                .name(PINGER_THREAD_NAME)
+                .start(() -> DirectConnectLogic.pingServer(address, Main::handlePingResult));
+    }
 
-                    if (debugingMode) {
-                        System.out.println("=== Server Ping Result ===");
-                        System.out.println("MOTD: " + (serverInfo.motd != null ? serverInfo.motd.getString() : "N/A"));
-                        System.out.println("Players: " + (!playerCount.isEmpty() ? playerCount : "0/0"));
-                        System.out.println("Ping: " + serverInfo.ping);
-                        System.out.println("Version: " + (serverInfo.version != null ? serverInfo.version.getString() : "Unknown"));
-                        System.out.println("State: " + serverInfo.state());
-                    }
+    public static boolean isDebugMode() {
+        return DEBUG_MODE;
+    }
 
-                    Minecraft client = Minecraft.getInstance();
-                    client.execute(() -> {
-                        Screen screen = client.screen;
-                        if (screen instanceof ServerDataUpdater updater) {
-                            updater.updateServerData(
-                                    serverInfo.name != null ? serverInfo.name : "",
-                                    serverInfo.motd != null ? serverInfo.motd : Component.empty(),
-                                    playerCount,
-                                    serverInfo.ping,
-                                    serverInfo.state()
-                            );
+    private static void handlePingResult(ServerData serverInfo) {
+        ServerStatus.Players players = serverInfo.players;
+        String playerCount = players != null ? players.online() + PLAYER_COUNT_SEPARATOR + players.max() : "";
 
-                            updater.updateFavicon(serverInfo.getIconBytes());
-                        }
-                    });
+        if (DEBUG_MODE) {
+            logPingResult(serverInfo, playerCount);
+        }
 
-                } else {
-                    if (debugingMode) System.out.println("=== Server Ping Failed ===");
-                }
-            });
-        }, "ServerLens-Pinger").start();
+        Minecraft client = Minecraft.getInstance();
+        client.execute(() -> updateCurrentScreen(client, serverInfo, playerCount));
+    }
+
+    private static void updateCurrentScreen(Minecraft client, ServerData serverInfo, String playerCount) {
+        Screen screen = client.screen;
+        if (screen instanceof ServerDataUpdater updater) {
+            ServerData.State state = normalizedState(serverInfo);
+            updater.updateServerData(
+                    serverInfo.name,
+                    serverInfo.motd,
+                    playerCount,
+                    serverInfo.ping,
+                    state
+            );
+            updater.updateFavicon(serverInfo.getIconBytes());
+        }
+    }
+
+    private static ServerData.State normalizedState(ServerData serverInfo) {
+        ServerData.State state = serverInfo.state();
+        if (state == ServerData.State.PINGING && serverInfo.ping >= MIN_KNOWN_PING) {
+            return ServerData.State.SUCCESSFUL;
+        }
+        return state;
+    }
+
+    private static void logPingResult(ServerData serverInfo, String playerCount) {
+        LOGGER.debug(
+                "Server ping result: motd={}, players={}, ping={}, version={}, state={}",
+                serverInfo.motd.getString(),
+                !playerCount.isEmpty() ? playerCount : "0/0",
+                serverInfo.ping,
+                serverInfo.version.getString(),
+                serverInfo.state()
+        );
     }
 }

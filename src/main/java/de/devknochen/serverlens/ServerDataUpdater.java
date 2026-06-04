@@ -21,5 +21,6 @@ import net.minecraft.network.chat.Component;
 
 public interface ServerDataUpdater {
     void updateServerData(String name, Component motd, String players, long ping, ServerData.State state);
+
     void updateFavicon(byte[] favicon);
 }

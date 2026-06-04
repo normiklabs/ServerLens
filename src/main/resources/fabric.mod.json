@@ -7,7 +7,8 @@
   "authors": ["DevKnochen"],
   "contact": {
     "homepage": "https://modrinth.com/mod/serverlens",
-    "sources": "https://github.com/DevKnochen/ServerLens"
+    "sources": "https://github.com/DevKnochen/ServerLens",
+    "issues": "https://github.com/DevKnochen/ServerLens/issues"
   },
   "entrypoints": {
     "client": [
