@@ -20,7 +20,7 @@
   ],
   "depends": {
     "fabricloader": ">=0.14.21",
-    "minecraft": ">=1.20 <=1.20.1",
+    "minecraft": ">=1.20.2 <=1.20.3",
     "fabric-api": "*"
   },
   "license": "Apache-2.0",

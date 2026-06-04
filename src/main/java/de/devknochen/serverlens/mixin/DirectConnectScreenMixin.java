@@ -370,7 +370,7 @@ public abstract class DirectConnectScreenMixin extends Screen {
 
     @Unique
     private void serverlens$startServerPing(String address) {
-        serverlens$currentServer = new ServerInfo(address, address, false);
+        serverlens$currentServer = new ServerInfo(address, address, ServerInfo.ServerType.OTHER);
         serverlens$activePingStartedAt = System.currentTimeMillis();
         serverlens$serverDataAt = 0L;
 
