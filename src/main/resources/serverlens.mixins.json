@@ -1,7 +1,7 @@
 {
   "required": true,
   "package": "de.devknochen.serverlens.mixin",
-  "compatibilityLevel": "JAVA_17",
+  "compatibilityLevel": "JAVA_21",
   "client": [
     "DirectConnectScreenMixin"
   ],

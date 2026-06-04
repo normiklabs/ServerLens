@@ -378,6 +378,7 @@ public abstract class DirectConnectScreenMixin extends Screen {
 
         try {
             serverlens$pinger.add(serverlens$currentServer, () -> {
+            }, () -> {
             });
         } catch (RuntimeException | java.net.UnknownHostException ignored) {
             serverlens$motdText = Text.translatable(SERVERLENS$CANNOT_CONNECT_TEXT);
@@ -425,7 +426,7 @@ public abstract class DirectConnectScreenMixin extends Screen {
 
     @Unique
     private static boolean serverlens$hasServerResponse(ServerInfo serverInfo) {
-        return serverInfo.players != null || serverInfo.getFavicon() != null || serverInfo.online || serverlens$hasMotd(serverInfo.label);
+        return serverInfo.players != null || serverInfo.getFavicon() != null || serverInfo.getStatus() == ServerInfo.Status.SUCCESSFUL || serverInfo.getStatus() == ServerInfo.Status.INCOMPATIBLE || serverlens$hasMotd(serverInfo.label);
     }
 
     @Unique
