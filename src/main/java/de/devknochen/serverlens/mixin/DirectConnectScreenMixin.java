@@ -23,7 +23,7 @@ import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.network.MultiplayerServerListPinger;
 import net.minecraft.client.network.ServerInfo;
-import net.minecraft.client.gui.screen.DirectConnectScreen;
+import net.minecraft.client.gui.screen.multiplayer.DirectConnectScreen;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.client.texture.NativeImage;
@@ -53,15 +53,6 @@ import java.util.Objects;
 public abstract class DirectConnectScreenMixin extends Screen {
 
     @Unique
-    private enum ServerLensState {
-        INITIAL,
-        PINGING,
-        SUCCESSFUL,
-        UNREACHABLE,
-        INCOMPATIBLE
-    }
-
-    @Unique
     private static final Logger SERVERLENS$LOGGER = LoggerFactory.getLogger(DirectConnectScreenMixin.class);
     @Unique
     private static final String SERVERLENS$MOD_ID = "serverlens";
@@ -75,6 +66,17 @@ public abstract class DirectConnectScreenMixin extends Screen {
     private static final String SERVERLENS$CANNOT_CONNECT_TEXT = "multiplayer.status.cannot_connect";
     @Unique
     private static final String SERVERLENS$PLAYER_COUNT_SEPARATOR = "/";
+
+    @Unique
+    private static final int SERVERLENS$STATE_INITIAL = 0;
+    @Unique
+    private static final int SERVERLENS$STATE_PINGING = 1;
+    @Unique
+    private static final int SERVERLENS$STATE_SUCCESSFUL = 2;
+    @Unique
+    private static final int SERVERLENS$STATE_UNREACHABLE = 3;
+    @Unique
+    private static final int SERVERLENS$STATE_INCOMPATIBLE = 4;
 
     @Unique
     private static final Identifier[] SERVERLENS$PING_TEXTURES = {
@@ -204,7 +206,7 @@ public abstract class DirectConnectScreenMixin extends Screen {
     @Unique
     private long serverlens$pingValue = SERVERLENS$UNKNOWN_PING;
     @Unique
-    private ServerLensState serverlens$serverState = ServerLensState.INITIAL;
+    private int serverlens$serverState = SERVERLENS$STATE_INITIAL;
     @Unique
     private Identifier serverlens$serverIcon;
     @Unique
@@ -303,7 +305,7 @@ public abstract class DirectConnectScreenMixin extends Screen {
                 serverlens$playerCount = "";
                 serverlens$versionText = "";
                 serverlens$pingValue = SERVERLENS$UNKNOWN_PING;
-                serverlens$serverState = ServerLensState.INITIAL;
+                serverlens$serverState = SERVERLENS$STATE_INITIAL;
                 serverlens$updateFavicon(null);
                 serverlens$pendingAddress = "";
                 serverlens$currentServer = null;
@@ -321,7 +323,7 @@ public abstract class DirectConnectScreenMixin extends Screen {
         serverlens$playerCount = "";
         serverlens$versionText = "";
         serverlens$pingValue = SERVERLENS$UNKNOWN_PING;
-        serverlens$serverState = ServerLensState.PINGING;
+        serverlens$serverState = SERVERLENS$STATE_PINGING;
         serverlens$updateFavicon(null);
         serverlens$pendingAddress = address;
         serverlens$pendingPingAt = System.currentTimeMillis() + SERVERLENS$PING_DEBOUNCE_MS;
@@ -362,7 +364,7 @@ public abstract class DirectConnectScreenMixin extends Screen {
             serverlens$playerCount = "";
             serverlens$versionText = "";
             serverlens$pingValue = SERVERLENS$UNKNOWN_PING;
-            serverlens$serverState = ServerLensState.UNREACHABLE;
+            serverlens$serverState = SERVERLENS$STATE_UNREACHABLE;
             serverlens$currentServer = null;
             serverlens$pinger.cancel();
         }
@@ -380,7 +382,7 @@ public abstract class DirectConnectScreenMixin extends Screen {
         } catch (RuntimeException | java.net.UnknownHostException ignored) {
             serverlens$motdText = Text.translatable(SERVERLENS$CANNOT_CONNECT_TEXT);
             serverlens$versionText = "";
-            serverlens$serverState = ServerLensState.UNREACHABLE;
+            serverlens$serverState = SERVERLENS$STATE_UNREACHABLE;
             serverlens$currentServer = null;
         }
     }
@@ -403,17 +405,17 @@ public abstract class DirectConnectScreenMixin extends Screen {
         serverlens$updateFavicon(serverInfo.getFavicon());
 
         if (serverlens$isIncompatible(serverInfo)) {
-            serverlens$serverState = ServerLensState.INCOMPATIBLE;
+            serverlens$serverState = SERVERLENS$STATE_INCOMPATIBLE;
             return;
         }
 
         if (!finalState && serverInfo.ping < SERVERLENS$MIN_KNOWN_PING) {
-            serverlens$serverState = ServerLensState.PINGING;
+            serverlens$serverState = SERVERLENS$STATE_PINGING;
             return;
         }
 
         serverlens$pingValue = serverInfo.ping >= SERVERLENS$MIN_KNOWN_PING ? serverInfo.ping : 0L;
-        serverlens$serverState = ServerLensState.SUCCESSFUL;
+        serverlens$serverState = SERVERLENS$STATE_SUCCESSFUL;
     }
 
     @Unique
@@ -472,10 +474,10 @@ public abstract class DirectConnectScreenMixin extends Screen {
 
     @Unique
     private int serverlens$getPlayerCountWidth() {
-        if (serverlens$serverState == ServerLensState.INCOMPATIBLE && !serverlens$versionText.isBlank()) {
+        if (serverlens$serverState == SERVERLENS$STATE_INCOMPATIBLE && !serverlens$versionText.isBlank()) {
             return this.textRenderer.getWidth(serverlens$versionText) + SERVERLENS$PLAYER_COUNT_GAP;
         }
-        if (serverlens$serverState != ServerLensState.SUCCESSFUL || serverlens$playerCount.isBlank() || !serverlens$playerCount.contains(SERVERLENS$PLAYER_COUNT_SEPARATOR)) {
+        if (serverlens$serverState != SERVERLENS$STATE_SUCCESSFUL || serverlens$playerCount.isBlank() || !serverlens$playerCount.contains(SERVERLENS$PLAYER_COUNT_SEPARATOR)) {
             return 0;
         }
 
@@ -499,13 +501,13 @@ public abstract class DirectConnectScreenMixin extends Screen {
 
     @Unique
     private void serverlens$renderPlayerCount(DrawContext graphics, int pingX, int baseY) {
-        if (serverlens$serverState == ServerLensState.INCOMPATIBLE && !serverlens$versionText.isBlank()) {
+        if (serverlens$serverState == SERVERLENS$STATE_INCOMPATIBLE && !serverlens$versionText.isBlank()) {
             int versionWidth = this.textRenderer.getWidth(serverlens$versionText);
             graphics.drawText(this.textRenderer, Text.literal(serverlens$versionText), pingX - versionWidth - SERVERLENS$PLAYER_COUNT_GAP, baseY, SERVERLENS$COLOR_INCOMPATIBLE_VERSION, SERVERLENS$TEXT_SHADOW);
             return;
         }
 
-        if (serverlens$serverState == ServerLensState.SUCCESSFUL && !serverlens$playerCount.isBlank() && serverlens$playerCount.contains(SERVERLENS$PLAYER_COUNT_SEPARATOR)) {
+        if (serverlens$serverState == SERVERLENS$STATE_SUCCESSFUL && !serverlens$playerCount.isBlank() && serverlens$playerCount.contains(SERVERLENS$PLAYER_COUNT_SEPARATOR)) {
             String[] parts = serverlens$playerCount.split(SERVERLENS$PLAYER_COUNT_SEPARATOR, 2);
             String players = parts[0];
             String maxPlayers = parts[1];
@@ -524,13 +526,13 @@ public abstract class DirectConnectScreenMixin extends Screen {
 
     @Unique
     private Identifier serverlens$getPingTexture() {
-        if (serverlens$serverState == ServerLensState.UNREACHABLE) {
+        if (serverlens$serverState == SERVERLENS$STATE_UNREACHABLE) {
             return SERVERLENS$UNREACHABLE;
         }
-        if (serverlens$serverState == ServerLensState.INCOMPATIBLE) {
+        if (serverlens$serverState == SERVERLENS$STATE_INCOMPATIBLE) {
             return SERVERLENS$INCOMPATIBLE;
         }
-        if (serverlens$serverState == ServerLensState.PINGING || serverlens$pingValue < SERVERLENS$MIN_KNOWN_PING) {
+        if (serverlens$serverState == SERVERLENS$STATE_PINGING || serverlens$pingValue < SERVERLENS$MIN_KNOWN_PING) {
             long tick = System.currentTimeMillis() / SERVERLENS$PING_ANIMATION_INTERVAL_MS;
             int frame = (int) (tick % SERVERLENS$PING_ANIMATION_FRAME_COUNT);
             if (frame > SERVERLENS$PING_ANIMATION_PEAK_FRAME) {
