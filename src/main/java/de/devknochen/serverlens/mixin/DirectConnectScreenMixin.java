@@ -26,6 +26,7 @@ import net.minecraft.client.network.ServerInfo;
 import net.minecraft.client.gui.screen.multiplayer.DirectConnectScreen;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.TextFieldWidget;
+import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.texture.NativeImage;
 import net.minecraft.client.texture.NativeImageBackedTexture;
 import net.minecraft.server.ServerMetadata;
@@ -47,6 +48,8 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @Mixin(DirectConnectScreen.class)
 @SuppressWarnings({"unused", "SpellCheckingInspection"})
@@ -56,6 +59,12 @@ public abstract class DirectConnectScreenMixin extends Screen {
     private static final Logger SERVERLENS$LOGGER = LoggerFactory.getLogger(DirectConnectScreenMixin.class);
     @Unique
     private static final String SERVERLENS$MOD_ID = "serverlens";
+    @Unique
+    private static final ExecutorService SERVERLENS$PING_EXECUTOR = Executors.newSingleThreadExecutor(task -> {
+        Thread thread = new Thread(task, "ServerLens Server Pinger");
+        thread.setDaemon(true);
+        return thread;
+    });
     @Unique
     private static final String SERVERLENS$SERVER_LIST_TEXTURE_PATH = "gui/serverlist/";
     @Unique
@@ -309,7 +318,7 @@ public abstract class DirectConnectScreenMixin extends Screen {
                 serverlens$updateFavicon(null);
                 serverlens$pendingAddress = "";
                 serverlens$currentServer = null;
-                serverlens$pinger.cancel();
+                serverlens$cancelPings();
             }
             return;
         }
@@ -328,7 +337,6 @@ public abstract class DirectConnectScreenMixin extends Screen {
         serverlens$pendingAddress = address;
         serverlens$pendingPingAt = System.currentTimeMillis() + SERVERLENS$PING_DEBOUNCE_MS;
         serverlens$currentServer = null;
-        serverlens$pinger.cancel();
     }
 
     @Unique
@@ -339,7 +347,15 @@ public abstract class DirectConnectScreenMixin extends Screen {
             serverlens$pendingAddress = "";
         }
 
-        serverlens$pinger.tick();
+        try {
+            serverlens$pinger.tick();
+        } catch (Exception e) {
+            if (Main.isDebugMode()) {
+                SERVERLENS$LOGGER.debug("Server ping failed", e);
+            }
+            serverlens$markUnreachable();
+            serverlens$cancelPings();
+        }
 
         if (serverlens$currentServer == null) {
             return;
@@ -366,26 +382,98 @@ public abstract class DirectConnectScreenMixin extends Screen {
             serverlens$pingValue = SERVERLENS$UNKNOWN_PING;
             serverlens$serverState = SERVERLENS$STATE_UNREACHABLE;
             serverlens$currentServer = null;
-            serverlens$pinger.cancel();
+            serverlens$cancelPings();
         }
     }
 
     @Unique
     private void serverlens$startServerPing(String address) {
-        serverlens$currentServer = new ServerInfo(address, address, ServerInfo.ServerType.OTHER);
+        if (!serverlens$shouldPingAddress(address)) {
+            serverlens$markUnreachable();
+            return;
+        }
+
+        serverlens$cancelPings();
+
+        ServerInfo server = new ServerInfo(address, address, ServerInfo.ServerType.OTHER);
+        serverlens$currentServer = server;
         serverlens$activePingStartedAt = System.currentTimeMillis();
         serverlens$serverDataAt = 0L;
 
-        try {
-            serverlens$pinger.add(serverlens$currentServer, () -> {
-            }, () -> {
-            });
-        } catch (RuntimeException | java.net.UnknownHostException ignored) {
-            serverlens$motdText = Text.translatable(SERVERLENS$CANNOT_CONNECT_TEXT);
-            serverlens$versionText = "";
-            serverlens$serverState = SERVERLENS$STATE_UNREACHABLE;
-            serverlens$currentServer = null;
+        SERVERLENS$PING_EXECUTOR.execute(() -> {
+            try {
+                serverlens$pinger.add(server, () -> {
+                }, () -> {
+                });
+            } catch (RuntimeException | java.net.UnknownHostException e) {
+                MinecraftClient.getInstance().execute(() -> {
+                    if (server == serverlens$currentServer && address.equals(serverlens$lastAddress)) {
+                        serverlens$markUnreachable();
+                    }
+                });
+            }
+        });
+    }
+
+    @Unique
+    private void serverlens$markUnreachable() {
+        if (serverlens$currentServer == null && serverlens$lastAddress.isEmpty()) {
+            return;
         }
+
+        serverlens$serverName = serverlens$lastAddress;
+        serverlens$motdText = Text.translatable(SERVERLENS$CANNOT_CONNECT_TEXT);
+        serverlens$playerCount = "";
+        serverlens$versionText = "";
+        serverlens$pingValue = SERVERLENS$UNKNOWN_PING;
+        serverlens$serverState = SERVERLENS$STATE_UNREACHABLE;
+        serverlens$currentServer = null;
+    }
+
+    @Unique
+    private void serverlens$cancelPings() {
+        try {
+            serverlens$pinger.cancel();
+        } catch (Exception e) {
+            if (Main.isDebugMode()) {
+                SERVERLENS$LOGGER.debug("Failed to cancel server ping", e);
+            }
+        }
+    }
+
+    @Unique
+    private static boolean serverlens$shouldPingAddress(String address) {
+        String host = address.trim();
+        int slash = host.indexOf('/');
+        if (slash >= 0) {
+            host = host.substring(0, slash);
+        }
+        if (host.startsWith("[")) {
+            int end = host.indexOf(']');
+            return end > 1;
+        }
+        int colon = host.lastIndexOf(':');
+        if (colon > 0 && host.indexOf(':') == colon) {
+            host = host.substring(0, colon);
+        }
+
+        if (host.equalsIgnoreCase("localhost") || host.matches("\\d{1,3}(\\.\\d{1,3}){3}") || host.indexOf(':') >= 0) {
+            return true;
+        }
+        if (!host.contains(".") || host.startsWith(".") || host.endsWith(".")) {
+            return false;
+        }
+
+        String[] labels = host.split("\\.");
+        if (labels.length < 2 || labels[labels.length - 1].length() < 2) {
+            return false;
+        }
+        for (String label : labels) {
+            if (label.isEmpty() || label.startsWith("-") || label.endsWith("-") || !label.matches("[A-Za-z0-9-]+")) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @Unique
@@ -445,7 +533,7 @@ public abstract class DirectConnectScreenMixin extends Screen {
     @Unique
     private void serverlens$renderServerIcon(DrawContext graphics, int baseX, int baseY, int iconSize) {
         Identifier icon = Objects.requireNonNullElse(serverlens$serverIcon, SERVERLENS$DEFAULT_ICON);
-        graphics.drawTexture(icon, baseX, baseY, SERVERLENS$TEXTURE_U, SERVERLENS$TEXTURE_V, iconSize, iconSize, iconSize, iconSize);
+        graphics.drawTexture(RenderLayer::getGuiTextured, icon, baseX, baseY, SERVERLENS$TEXTURE_U, SERVERLENS$TEXTURE_V, iconSize, iconSize, iconSize, iconSize);
     }
 
     @Unique
@@ -495,7 +583,7 @@ public abstract class DirectConnectScreenMixin extends Screen {
     private void serverlens$renderPing(DrawContext graphics, int baseX, int rowWidth, int baseY) {
         Identifier pingTexture = serverlens$getPingTexture();
         int pingX = baseX + rowWidth - SERVERLENS$PING_X_OFFSET;
-        graphics.drawTexture(pingTexture, pingX, baseY, SERVERLENS$TEXTURE_U, SERVERLENS$TEXTURE_V, SERVERLENS$PING_WIDTH, SERVERLENS$PING_HEIGHT, SERVERLENS$PING_WIDTH, SERVERLENS$PING_HEIGHT);
+        graphics.drawTexture(RenderLayer::getGuiTextured, pingTexture, pingX, baseY, SERVERLENS$TEXTURE_U, SERVERLENS$TEXTURE_V, SERVERLENS$PING_WIDTH, SERVERLENS$PING_HEIGHT, SERVERLENS$PING_WIDTH, SERVERLENS$PING_HEIGHT);
 
         serverlens$renderPlayerCount(graphics, pingX, baseY);
     }
