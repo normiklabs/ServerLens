@@ -26,7 +26,7 @@ import net.minecraft.client.network.ServerInfo;
 import net.minecraft.client.gui.screen.multiplayer.DirectConnectScreen;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.TextFieldWidget;
-import net.minecraft.client.render.RenderLayer;
+import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.texture.NativeImage;
 import net.minecraft.client.texture.NativeImageBackedTexture;
 import net.minecraft.server.ServerMetadata;
@@ -534,7 +534,7 @@ public abstract class DirectConnectScreenMixin extends Screen {
     @Unique
     private void serverlens$renderServerIcon(DrawContext graphics, int baseX, int baseY, int iconSize) {
         Identifier icon = Objects.requireNonNullElse(serverlens$serverIcon, SERVERLENS$DEFAULT_ICON);
-        graphics.drawTexture(RenderLayer::getGuiTextured, icon, baseX, baseY, SERVERLENS$TEXTURE_U, SERVERLENS$TEXTURE_V, iconSize, iconSize, iconSize, iconSize);
+        graphics.drawTexture(RenderPipelines.GUI_TEXTURED, icon, baseX, baseY, SERVERLENS$TEXTURE_U, SERVERLENS$TEXTURE_V, iconSize, iconSize, iconSize, iconSize);
     }
 
     @Unique
@@ -584,7 +584,7 @@ public abstract class DirectConnectScreenMixin extends Screen {
     private void serverlens$renderPing(DrawContext graphics, int baseX, int rowWidth, int baseY) {
         Identifier pingTexture = serverlens$getPingTexture();
         int pingX = baseX + rowWidth - SERVERLENS$PING_X_OFFSET;
-        graphics.drawTexture(RenderLayer::getGuiTextured, pingTexture, pingX, baseY, SERVERLENS$TEXTURE_U, SERVERLENS$TEXTURE_V, SERVERLENS$PING_WIDTH, SERVERLENS$PING_HEIGHT, SERVERLENS$PING_WIDTH, SERVERLENS$PING_HEIGHT);
+        graphics.drawTexture(RenderPipelines.GUI_TEXTURED, pingTexture, pingX, baseY, SERVERLENS$TEXTURE_U, SERVERLENS$TEXTURE_V, SERVERLENS$PING_WIDTH, SERVERLENS$PING_HEIGHT, SERVERLENS$PING_WIDTH, SERVERLENS$PING_HEIGHT);
 
         serverlens$renderPlayerCount(graphics, pingX, baseY);
     }
