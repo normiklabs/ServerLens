@@ -76,7 +76,7 @@ public final class Main implements ClientModInitializer {
     }
 
     private static void updateCurrentScreen(Minecraft client, ServerData serverInfo, String playerCount) {
-        Screen screen = client.screen;
+        Screen screen = client.gui.screen();
         if (screen instanceof ServerDataUpdater updater) {
             ServerData.State state = normalizedState(serverInfo);
             updater.updateServerData(
