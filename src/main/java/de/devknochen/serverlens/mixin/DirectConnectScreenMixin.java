@@ -237,7 +237,6 @@ public abstract class DirectConnectScreenMixin extends Screen {
     }
 
     @Inject(method = "extractRenderState", at = @At("TAIL"))
-    @Unique
     private void serverlens$renderExtras(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a, CallbackInfo ci) {
         serverlens$updateAddressPreview();
 
@@ -268,7 +267,13 @@ public abstract class DirectConnectScreenMixin extends Screen {
         }
 
         String address = ipEdit.getValue();
-        if (address.isBlank() || address.equals(serverlens$lastAddress)) {
+        if (address.isBlank()) {
+            Main.onAddressBarUpdate(address);
+            serverlens$lastAddress = "";
+            return;
+        }
+
+        if (address.equals(serverlens$lastAddress)) {
             return;
         }
 

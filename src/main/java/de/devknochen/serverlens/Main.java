@@ -18,12 +18,19 @@ package de.devknochen.serverlens;
 
 import de.devknochen.serverlens.logic.DirectConnectLogic;
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.network.protocol.status.ServerStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 public final class Main implements ClientModInitializer {
 
@@ -33,37 +40,68 @@ public final class Main implements ClientModInitializer {
     private static final String PLAYER_COUNT_SEPARATOR = "/";
     private static final boolean DEBUG_MODE = Boolean.getBoolean("serverlens.debug");
     private static final long MIN_KNOWN_PING = 0L;
+    private static final ScheduledExecutorService PINGER_EXECUTOR = Executors.newSingleThreadScheduledExecutor(runnable -> Thread.ofPlatform()
+            .name(PINGER_THREAD_NAME)
+            .daemon(true)
+            .unstarted(runnable));
+    private static final AtomicLong PING_REQUEST_ID = new AtomicLong();
+    private static final Object PING_LOCK = new Object();
     private static String lastAddress = "";
-    private static long lastPingTime;
+    private static ScheduledFuture<?> pendingPing;
 
     @Override
     public void onInitializeClient() {
+        ClientLifecycleEvents.CLIENT_STOPPING.register(ignored -> PINGER_EXECUTOR.shutdownNow());
         LOGGER.info("ServerLens initialized");
     }
 
     public static void onAddressBarUpdate(String address) {
         if (address == null || address.isBlank()) {
+            if (!lastAddress.isEmpty()) {
+                lastAddress = "";
+                cancelPendingPing();
+            }
             return;
         }
 
-        long now = System.currentTimeMillis();
-        if (address.equals(lastAddress) && now - lastPingTime < PING_DEBOUNCE_MS) {
+        if (address.equals(lastAddress)) {
             return;
         }
 
         lastAddress = address;
-        lastPingTime = now;
+        long requestId = PING_REQUEST_ID.incrementAndGet();
 
-        Thread.ofPlatform()
-                .name(PINGER_THREAD_NAME)
-                .start(() -> DirectConnectLogic.pingServer(address, Main::handlePingResult));
+        synchronized (PING_LOCK) {
+            if (pendingPing != null) {
+                pendingPing.cancel(true);
+            }
+            pendingPing = PINGER_EXECUTOR.schedule(
+                    () -> DirectConnectLogic.pingServer(address, serverInfo -> handlePingResult(requestId, serverInfo)),
+                    PING_DEBOUNCE_MS,
+                    TimeUnit.MILLISECONDS
+            );
+        }
+    }
+
+    private static void cancelPendingPing() {
+        PING_REQUEST_ID.incrementAndGet();
+        synchronized (PING_LOCK) {
+            if (pendingPing != null) {
+                pendingPing.cancel(true);
+                pendingPing = null;
+            }
+        }
     }
 
     public static boolean isDebugMode() {
         return DEBUG_MODE;
     }
 
-    private static void handlePingResult(ServerData serverInfo) {
+    private static void handlePingResult(long requestId, ServerData serverInfo) {
+        if (requestId != PING_REQUEST_ID.get()) {
+            return;
+        }
+
         ServerStatus.Players players = serverInfo.players;
         String playerCount = players != null ? players.online() + PLAYER_COUNT_SEPARATOR + players.max() : "";
 
