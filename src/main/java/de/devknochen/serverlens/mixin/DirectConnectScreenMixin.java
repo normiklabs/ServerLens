@@ -237,7 +237,6 @@ public abstract class DirectConnectScreenMixin extends Screen {
     }
 
     @Inject(method = "extractRenderState", at = @At("TAIL"))
-    @Unique
     private void serverlens$renderExtras(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a, CallbackInfo ci) {
         serverlens$updateAddressPreview();
 
@@ -251,14 +250,12 @@ public abstract class DirectConnectScreenMixin extends Screen {
         }
 
         int baseY = editorBottom + SERVERLENS$PREVIEW_TOP_PADDING;
-        int iconSize = availableHeight >= SERVERLENS$MIN_ICON_SIZE ? Math.clamp(availableHeight, SERVERLENS$MIN_ICON_SIZE, SERVERLENS$ICON_SIZE) : 0;
-        int textX = iconSize > 0 ? baseX + iconSize + SERVERLENS$TEXT_ICON_GAP : baseX;
+        int iconSize = Math.min(availableHeight, SERVERLENS$ICON_SIZE);
+        int textX = baseX + iconSize + SERVERLENS$TEXT_ICON_GAP;
         int textWidth = rowWidth - (textX - baseX) - SERVERLENS$TEXT_WIDTH_PADDING;
         int nameWidth = serverlens$getNameWidth(baseX, rowWidth, textX);
 
-        if (iconSize > 0) {
-            serverlens$renderServerIcon(graphics, baseX, baseY, iconSize);
-        }
+        serverlens$renderServerIcon(graphics, baseX, baseY, iconSize);
         serverlens$renderServerText(graphics, textX, baseY, nameWidth, textWidth, availableHeight);
         serverlens$renderPing(graphics, baseX, rowWidth, baseY);
     }
@@ -270,7 +267,13 @@ public abstract class DirectConnectScreenMixin extends Screen {
         }
 
         String address = ipEdit.getValue();
-        if (address.isBlank() || address.equals(serverlens$lastAddress)) {
+        if (address.isBlank()) {
+            Main.onAddressBarUpdate(address);
+            serverlens$lastAddress = "";
+            return;
+        }
+
+        if (address.equals(serverlens$lastAddress)) {
             return;
         }
 
@@ -300,7 +303,7 @@ public abstract class DirectConnectScreenMixin extends Screen {
 
         if (!serverlens$motdText.getString().isEmpty()) {
             int motdY = baseY + SERVERLENS$MOTD_Y_OFFSET;
-            int motdWidth = textWidth < font.lineHeight ? font.lineHeight : textWidth;
+            int motdWidth = Math.max(textWidth, font.lineHeight);
             List<FormattedCharSequence> lines = font.split(serverlens$motdText, motdWidth);
             int maxLines = Math.clamp((availableHeight - SERVERLENS$MOTD_Y_OFFSET) / font.lineHeight, 0, SERVERLENS$MAX_MOTD_LINES);
             for (int lineIndex = 0; lineIndex < maxLines && lineIndex < lines.size(); lineIndex++) {
