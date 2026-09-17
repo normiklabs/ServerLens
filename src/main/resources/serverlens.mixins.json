@@ -1,6 +1,6 @@
 {
   "required": true,
-  "package": "de.devknochen.serverlens.mixin",
+  "package": "org.normik.serverlens.mixin",
   "compatibilityLevel": "JAVA_25",
   "client": [
     "DirectConnectScreenMixin"

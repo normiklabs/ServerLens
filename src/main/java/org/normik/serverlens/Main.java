@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 DevKnochen
+ * Copyright 2026 The normik Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-package de.devknochen.serverlens;
+package org.normik.serverlens;
 
-import de.devknochen.serverlens.logic.DirectConnectLogic;
+import org.normik.serverlens.logic.DirectConnectLogic;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.minecraft.client.Minecraft;

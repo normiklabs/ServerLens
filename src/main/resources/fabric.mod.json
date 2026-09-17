@@ -4,15 +4,15 @@
   "version": "${version}",
   "name": "ServerLens",
   "description": "A client-side mod that brings the full server preview (MOTD, ping, player count, and favicon) to the Direct-Connect Screen.",
-  "authors": ["DevKnochen"],
+  "authors": ["The normik Authors"],
   "contact": {
     "homepage": "https://modrinth.com/mod/serverlens",
-    "sources": "https://github.com/DevKnochen/ServerLens",
-    "issues": "https://github.com/DevKnochen/ServerLens/issues"
+    "sources": "https://github.com/normiklabs/ServerLens",
+    "issues": "https://github.com/normiklabs/ServerLens/issues"
   },
   "entrypoints": {
     "client": [
-      "de.devknochen.serverlens.Main"
+      "org.normik.serverlens.Main"
     ]
   },
   "mixins": [
@@ -20,7 +20,7 @@
   ],
   "depends": {
     "fabricloader": ">=0.19.3",
-    "minecraft": "~26.2",
+    "minecraft": "~26.3",
     "fabric-api": "*"
   },
   "license": "Apache-2.0",
