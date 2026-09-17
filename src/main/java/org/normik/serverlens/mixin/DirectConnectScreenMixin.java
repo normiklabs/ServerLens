@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 DevKnochen
+ * Copyright 2026 The normik Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-package de.devknochen.serverlens.mixin;
+package org.normik.serverlens.mixin;
 
 import com.mojang.blaze3d.platform.NativeImage;
-import de.devknochen.serverlens.Main;
-import de.devknochen.serverlens.ServerDataUpdater;
+import org.normik.serverlens.Main;
+import org.normik.serverlens.ServerDataUpdater;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;

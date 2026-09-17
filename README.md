@@ -2,9 +2,9 @@
 
 # ServerLens
 
-[![Email](https://img.shields.io/badge/Contact-EA4335?style=for-the-badge&logo=gmail&logoColor=white)](mailto:contact@knochenn.de)
-[![Support on Ko-Fi](https://img.shields.io/badge/Support%20on%20Ko--fi-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/knochennmc)
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue?style=for-the-badge)](https://github.com/DevKnochen/ServerLens/blob/main/LICENSE)
+[![Email](https://img.shields.io/badge/Contact-EA4335?style=for-the-badge&logo=gmail&logoColor=white)](mailto:contact@normik.org)
+[![Support on Ko-Fi](https://img.shields.io/badge/Support%20on%20Ko--fi-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/normiklabs)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue?style=for-the-badge)](https://github.com/normiklabs/ServerLens/blob/main/LICENSE)
 
 ### See your server at a glance!
 
@@ -30,13 +30,13 @@ _Bring the Server preview to the direct-connect screen, too!_
 
 ## 🐛 Something broken?
 
-Open an issue on [GitHub](https://github.com/DevKnochen/ServerLens/issues). Describe your issue, include what version you're on, what other mods you have and any crash logs. We'll sort it out.
+Open an issue on [GitHub](https://github.com/normiklabs/ServerLens/issues). Describe your issue, include what version you're on, what other mods you have and any crash logs. We'll sort it out.
 
 ---
 
 ## 📩 Contact
 
-Reach out to us at contact@knochenn.de
+Reach out to us at contact@normik.org
 
 ---
 

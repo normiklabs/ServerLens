@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 DevKnochen
+ * Copyright 2026 The normik Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package de.devknochen.serverlens;
+package org.normik.serverlens;
 
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.network.chat.Component;

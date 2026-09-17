@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 DevKnochen
+ * Copyright 2026 The normik Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package de.devknochen.serverlens.logic;
+package org.normik.serverlens.logic;
 
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.ServerStatusPinger;
